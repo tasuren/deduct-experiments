@@ -1,0 +1,439 @@
+\documentclass[a4paper,11pt]{bxjsarticle}
+
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[utf8]{inputenc}
+  \usepackage{CJKutf8}
+  \newcommand{\JPCJKfamily}{ipxm}
+\fi
+
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{bm}
+\usepackage{enumitem}
+\usepackage{hyperref}
+
+\newtheorem{definition}{定義}[section]
+\newtheorem{proposition}[definition]{命題}
+\newtheorem{remark}[definition]{注意}
+\newtheorem{example}[definition]{例}
+
+\newcommand{\Ent}{\mathrm{Ent}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\Sym}{\mathrm{Sym}}
+\newcommand{\Term}{\mathrm{Term}}
+\newcommand{\Atom}{\mathrm{Atom}}
+\newcommand{\GAtom}{\mathrm{GAtom}}
+\newcommand{\State}{\mathrm{State}}
+\newcommand{\arity}{\mathrm{arity}}
+\newcommand{\headsym}{\mathrm{head}}
+\newcommand{\Prem}{\mathrm{Prem}}
+\newcommand{\Conc}{\mathrm{Conc}}
+\newcommand{\dom}{\mathrm{dom}}
+\newcommand{\vars}{\mathrm{vars}}
+\newcommand{\matchrel}{\mathrel{\mathrm{match}}}
+\newcommand{\MS}{\mathbin{\uplus}}
+\newcommand{\powfin}{\mathcal{M}_{\mathrm{fin}}}
+\newcommand{\Produced}{\mathrm{Produced}}
+\newcommand{\Consumed}{\mathrm{Consumed}}
+
+\title{前提消費型演繹系の形式モデル}
+\author{}
+\date{}
+
+\begin{document}
+\ifPDFTeX
+  \begin{CJK}{UTF8}{\JPCJKfamily}
+\fi
+\maketitle
+
+\begin{abstract}
+本稿は、前提消費を伴う逐次的演繹過程を状態遷移系として定式化する。
+状態は地の原子的式の有限多重集合とし、各ルールはヘッド原子的式・前提テンプレート列・結論テンプレート列からなる。
+地の実行対象がヘッドを具体化して誘導する代入の下で、前提の可充足性が満たされるとき、一段遷移は対応する前提要素を消費し、結論（空結論の場合は当該実行対象）を生成する。
+\end{abstract}
+
+\section{概要}
+
+対象とする系は、静的な真理の蓄積ではなく、状態の進行を扱う。
+ゆえに中心となるのは命題の真偽そのものではなく、現在状態の中にどのような事実が存在し、ある出来事の実行に際して何が必要であり、実行後に状態がどのように変化するかである。
+
+この観点から、本稿では当該系を、\emph{地の原子的式を資源として扱う状態遷移系}として形式化する。
+
+\section{基本集合}
+
+\begin{definition}[基本集合]
+次の集合を固定する。
+\begin{enumerate}[label=\arabic*.]
+\item $\Ent$: 具体的対象の集合
+\item $\Var$: 変項の集合
+\item $\Sym$: 述語記号の集合
+\end{enumerate}
+さらに、各述語記号 $p \in \Sym$ には項数
+\[
+\arity(p) \in \mathbb{N}
+\]
+が対応するものとする。
+\end{definition}
+
+\begin{definition}[項]
+項の集合 $\Term$ を
+\[
+\Term \coloneqq \Ent \cup \Var
+\]
+で定める。
+\end{definition}
+
+\begin{definition}[原子的式]
+$p \in \Sym$ かつ $\arity(p)=n$ とする。
+このとき
+\[
+p(t_1,\dots,t_n)\qquad (t_1,\dots,t_n \in \Term)
+\]
+の形の式を原子的式と呼ぶ。
+原子的式全体の集合を $\Atom$ と書く。
+\end{definition}
+
+\begin{definition}[地の原子的式]
+原子的式 $a \in \Atom$ が\emph{地の原子的式}であるとは、そのすべての引数が $\Ent$ に属することである。
+地の原子的式全体の集合を $\GAtom$ と書く。
+\end{definition}
+
+\section{ルール}
+
+\begin{definition}[ルール]
+ルール $r$ とは、次のデータ
+\[
+r = (\headsym(r), \Prem(r), \Conc(r))
+\]
+からなるものとする。ここで
+\begin{enumerate}[label=\arabic*.]
+\item $\headsym(r) \in \Atom$ はヘッド原子的式
+\item $\Prem(r) = (p_1,\dots,p_m)$ は前提テンプレートの有限列で、各 $p_i \in \Atom$（$i=1,\dots,m$）
+\item $\Conc(r) = (c_1,\dots,c_k)$ は結論テンプレートの有限列で、各 $c_j \in \Atom$（$j=1,\dots,k$）
+\item 各結論テンプレートに現れる変項はすべてヘッド原子的式にも現れる、すなわち
+\[
+\vars(c_j) \subseteq \vars(\headsym(r)) \qquad (j=1,\dots,k)
+\]
+\end{enumerate}
+である。
+\end{definition}
+
+\begin{remark}
+非形式的には、ヘッド原子的式の具体例が実行対象として与えられたとき、その具体化に応じて前提テンプレート群が状態中に存在しなければならず、存在するならそれらを消費して結論テンプレート群を生成する、というのがルールの意味である。
+\end{remark}
+
+\section{代入}
+
+\begin{definition}[代入]
+代入とは有限写像
+\[
+\sigma : \Var \rightharpoonup \Term
+\]
+である。
+\end{definition}
+
+\begin{definition}[代入の作用]
+代入 $\sigma: \Var \rightharpoonup \Term$ の項への拡張作用を、次で定める。
+\begin{align*}
+\sigma(e) &= e \qquad &&(e \in \Ent), \\
+\sigma(x) &=
+\begin{cases}
+u & \text{if } (x,u) \in \sigma, \\
+x & \text{otherwise},
+\end{cases}
+&& (x \in \Var), \\
+\sigma\bigl(p(t_1,\dots,t_n)\bigr) &= p\bigl(\sigma(t_1),\dots,\sigma(t_n)\bigr).
+\end{align*}
+ここで最後の式は、原子的式への拡張作用である。
+\end{definition}
+
+\begin{remark}
+この操作は、実装上の「具体値の埋め込み」に対応するが、本稿では純粋に数学的な代入作用として扱う。
+\end{remark}
+
+\section{実行対象と誘導代入}
+
+\begin{definition}[実行対象]
+ルール $r$ に対し、原子的式 $a \in \GAtom$ が $r$ の\emph{実行対象}であるとは、ある代入 $\sigma$ が存在して
+\[
+a = \sigma(\headsym(r))
+\quad\text{かつ}\quad
+\dom(\sigma)=\vars(\headsym(r))
+\]
+となることである。
+\end{definition}
+
+\begin{definition}[誘導代入]
+上の状況で
+\[
+a = \sigma(\headsym(r))
+\quad\text{かつ}\quad
+\dom(\sigma)=\vars(\headsym(r))
+\]
+を満たす唯一の代入 $\sigma$ を、$a$ がヘッド原子的式から誘導する代入と呼ぶ。
+\end{definition}
+
+\begin{remark}
+本稿では、実行対象は地の原子的式とする。これは、状態に追加される事実が常に具体化済みであるという意味論を明確にするためである。
+\end{remark}
+
+\section{マッチング}
+
+\begin{definition}[マッチング]
+原子的式 $p \in \Atom$ と地の原子的式 $s \in \GAtom$ に対し、
+\[
+p \matchrel s
+\]
+と書くのは、ある代入 $\theta$ が存在して
+\[
+\theta(p) = s
+\]
+となることである。
+\end{definition}
+
+\begin{remark}
+この関係は、前提テンプレートが状態中の具体的事実によって満たされることを表す。
+これは完全な単一化ではなく、テンプレート側から具体的事実側への片方向マッチングである。
+すなわち $p \matchrel s$ は「ある代入の存在」を述べる述語であり、二つの式を対称に同一化することを要求しない。
+\end{remark}
+
+\section{状態}
+
+\begin{definition}[状態]
+状態とは、地の原子的式の有限多重集合である。
+状態全体の集合を
+\[
+\State \coloneqq \powfin(\GAtom)
+\]
+と書く。
+\end{definition}
+
+\begin{remark}
+状態を集合ではなく多重集合とする理由は、同一の事実が複数回存在しうること、および前提消費がそのうち一つのみを取り除くことを表現するためである。
+\end{remark}
+
+\section{一段遷移}
+
+\begin{definition}[前提の可充足性]
+状態 $S \in \State$、ルール $r$、および $r$ の実行対象 $a$ に対する誘導代入 $\sigma$ を与える。
+前提列 $\Prem(r)=(p_1,\dots,p_m)$ が $S$ において\emph{可充足}であるとは、ある代入 $\tau \supseteq \sigma$ と $S$ の要素
+\[
+s_1,\dots,s_m \in \GAtom
+\]
+を、各要素の選択回数が $S$ における重複度を超えないように選べて、かつ各前提 $p_i$ に対応して
+\[
+\tau(p_i)=s_i \qquad (i=1,\dots,m)
+\]
+が同時に成り立つことである。
+\end{definition}
+
+\begin{remark}
+ここで $\sigma$ は実行対象からヘッド原子的式に対して誘導される代入であり、$\tau$ はそれを拡張して全ての前提を同時に満たすための代入である。
+各 $i$ について $\tau(p_i)=s_i$ であるから $p_i \matchrel s_i$ が成り立つが、可充足性はそれらが\emph{同一の}拡張代入 $\tau$ で同時に実現されることを要求する点で、前提間の変項共有制約を保存している。
+各結論テンプレートに現れる変項はすべてヘッド原子的式にも現れるので、生成多重集合は $\sigma$ のみで定まる。
+\end{remark}
+
+\begin{definition}[生成多重集合]
+ルール $r$、誘導代入 $\sigma$、および $a=\sigma(\headsym(r))$ を満たす実行対象 $a$ に対し、生成多重集合 $\Produced(r,\sigma,a)$ を次で定める。
+\[
+\Produced(r,\sigma,a) \coloneqq
+\begin{cases}
+[\sigma(c_1),\dots,\sigma(c_k)] & \text{if } \Conc(r)=(c_1,\dots,c_k),\ k>0,\\
+[a] & \text{if } \Conc(r)=().
+\end{cases}
+\]
+\end{definition}
+
+\begin{definition}[一段遷移]
+状態 $S,S' \in \State$、ルール $r$、実行対象 $a \in \GAtom$ に対し、
+\[
+S \xrightarrow[a]{r} S'
+\]
+と書くのは、$\Prem(r)=(p_1,\dots,p_m)$ として、ある誘導代入 $\sigma$、ある代入 $\tau \supseteq \sigma$、および前提を満たす消費多重集合
+\[
+\Consumed = [s_1,\dots,s_m]
+\]
+が存在し、各地の原子的式 $u$ について $s_i=u$ となる添字 $i$ の個数が $S$ における $u$ の重複度を超えず、かつ
+\[
+\tau(p_i)=s_i \qquad (i=1,\dots,m),
+\]
+\[
+S' = (S \setminus \Consumed) \MS \Produced(r,\sigma,a)
+\]
+となることである。
+\end{definition}
+
+\begin{remark}
+ここで $S \setminus \Consumed$ は、多重集合として $\Consumed$ の各要素をちょうど一回ずつ取り除く操作である。
+また、遷移条件中の $\tau(p_i)=s_i$ は各前提テンプレートのマッチング条件を与えており、しかも全前提が同一の $\tau \supseteq \sigma$ を共有することで、実行対象により固定された束縛と前提間の整合性が同時に保証される。
+\end{remark}
+
+\section{実行意味論}
+
+\begin{definition}[実行列]
+実行列とは、地の原子的式の有限列
+\[
+A=(a_1,\dots,a_n)
+\]
+である。
+\end{definition}
+
+\begin{definition}[逐次実行]
+初期状態 $S_0 \in \State$ と実行列 $A=(a_1,\dots,a_n)$ に対し、逐次実行とは、各 $i=1,\dots,n$ について適当なルール $r_i$ が存在して
+\[
+S_{i-1} \xrightarrow[a_i]{r_i} S_i
+\]
+が成り立つような状態列
+\[
+S_0,S_1,\dots,S_n
+\]
+の存在である。
+\end{definition}
+
+\begin{proposition}[逐次実行の意味]
+逐次実行が存在するなら、$S_n$ を当該実行列の最終状態と呼ぶ。
+一方、ある $i$ において必要な一段遷移が存在しないなら、実行はその時点で失敗する。
+\end{proposition}
+
+\section{例}
+
+\begin{example}[人間は死すべきである]
+述語記号として $\mathrm{Human}$ と $\mathrm{Mortal}$ を考える。
+ルール $r_{\mathrm{mortal}}$ を
+\begin{align*}
+\headsym(r_{\mathrm{mortal}}) &= \mathrm{Mortal}(x), \\
+\Prem(r_{\mathrm{mortal}}) &= \bigl(\mathrm{Human}(x)\bigr), \\
+\Conc(r_{\mathrm{mortal}}) &= ()
+\end{align*}
+で定める。
+
+実行対象を
+\[
+a = \mathrm{Mortal}(\mathrm{Socrates})
+\]
+とすると、誘導代入は $\sigma(x)=\mathrm{Socrates}$ である。
+したがって、状態中に $\mathrm{Human}(\mathrm{Socrates})$ があれば、それを消費して $\mathrm{Mortal}(\mathrm{Socrates})$ が状態に残る。
+\end{example}
+
+\begin{example}[鍵による解錠]
+述語記号として $\mathrm{Unlock}$, $\mathrm{KeyFor}$, $\mathrm{Has}$, $\mathrm{Opened}$ を考える。
+ルール $r_{\mathrm{unlock}}$ を
+\begin{align*}
+\headsym(r_{\mathrm{unlock}}) &= \mathrm{Unlock}(x), \\
+\Prem(r_{\mathrm{unlock}}) &= \bigl(\mathrm{KeyFor}(y,x),\mathrm{Has}(y)\bigr), \\
+\Conc(r_{\mathrm{unlock}}) &= \bigl(\mathrm{Opened}(x)\bigr)
+\end{align*}
+で定める。
+
+実行対象を
+\[
+a = \mathrm{Unlock}(\mathrm{Door1})
+\]
+とすると、誘導代入は $\sigma(x)=\mathrm{Door1}$ である。
+状態中に
+\[
+\mathrm{KeyFor}(\mathrm{GoldKey},\mathrm{Door1})
+\quad\text{と}\quad
+\mathrm{Has}(\mathrm{GoldKey})
+\]
+の両方があれば、共通拡張代入 $\tau$ はさらに $y \mapsto \mathrm{GoldKey}$ を与えられる。
+したがって前提列は可充足であり、次状態では $\mathrm{Opened}(\mathrm{Door1})$ が生成される。
+\end{example}
+
+\begin{example}[所有の移動]
+述語記号として $\mathrm{Have}$ と $\mathrm{Give}$ を考える。
+ルール $r_{\mathrm{give}}$ を
+\begin{align*}
+\headsym(r_{\mathrm{give}}) &= \mathrm{Give}(x,y,o), \\
+\Prem(r_{\mathrm{give}}) &= \bigl(\mathrm{Have}(x,o)\bigr), \\
+\Conc(r_{\mathrm{give}}) &= \bigl(\mathrm{Have}(y,o)\bigr)
+\end{align*}
+で定める。
+
+実行対象を $\mathrm{Give}(\mathrm{Takagi},\mathrm{Marisa},\mathrm{Cat})$ とすると、
+状態中に $\mathrm{Have}(\mathrm{Takagi},\mathrm{Cat})$ がある場合に限り、それを消費して $\mathrm{Have}(\mathrm{Marisa},\mathrm{Cat})$ が生成される。
+\end{example}
+
+\begin{example}[逐次実行]
+上のルール $r_{\mathrm{give}}$ を再び用いる。
+初期状態を
+\[
+S_0=
+\bigl[
+\mathrm{Have}(\mathrm{Takagi},\mathrm{Cat})
+\bigr]
+\]
+とし、実行列を
+\[
+A=
+\bigl(
+\mathrm{Give}(\mathrm{Takagi},\mathrm{Marisa},\mathrm{Cat}),
+\mathrm{Give}(\mathrm{Marisa},\mathrm{Alice},\mathrm{Cat})
+\bigr)
+\]
+とする。
+
+このとき
+\[
+S_0 \xrightarrow[\mathrm{Give}(\mathrm{Takagi},\mathrm{Marisa},\mathrm{Cat})]{r_{\mathrm{give}}} S_1
+\]
+が成り立ち、
+\[
+S_1=
+\bigl[
+\mathrm{Have}(\mathrm{Marisa},\mathrm{Cat})
+\bigr]
+\]
+である。
+さらに
+\[
+S_1 \xrightarrow[\mathrm{Give}(\mathrm{Marisa},\mathrm{Alice},\mathrm{Cat})]{r_{\mathrm{give}}} S_2
+\]
+が成り立ち、
+\[
+S_2=
+\bigl[
+\mathrm{Have}(\mathrm{Alice},\mathrm{Cat})
+\bigr]
+\]
+である。
+したがって、$(S_0,S_1,S_2)$ は $S_0$ からの実行列 $A$ の逐次実行である。
+\end{example}
+
+\section{モデルの性格}
+
+\begin{remark}
+以上の形式化から、この系は次のような特徴を持つ。
+\begin{enumerate}[label=\arabic*.]
+\item 状態付きの前方推論系である。
+\item 前提消費を伴うルール実行系である。
+\item 地の原子的式を資源として扱う。
+\end{enumerate}
+したがって、古典的な単調論理というより、線形論理的直観、小ステップ意味論、あるいはプロダクションシステムに近い性格を持つ。
+ただし、これは自然言語全体の完全な意味論を与えることを目的としない。むしろ、文書や説明における曖昧さを必要な範囲で解消した後の、理想化された推論経路・実行経路を明示し、前提不足や飛躍の検査を可能にするための最小核として位置づけられる。
+\end{remark}
+
+\section{拡張の方向}
+
+\begin{remark}
+今後の拡張としては、少なくとも次が考えられる。
+\begin{enumerate}[label=\arabic*.]
+\item 項を構造化項へ拡張すること
+\item マッチングを一般単一化へ拡張すること
+\item 否定や矛盾状態を導入すること
+\item 根拠追跡を導入すること
+\item 逐次一本鎖ではなく分岐遷移系へ拡張すること
+\end{enumerate}
+文書中心の利用に向けた軽量な展望として、次も考えられる。
+\begin{enumerate}[label=\arabic*.]
+\setcounter{enumi}{5}
+\item トレイトを、あるドメインで対象クラスを反復的に特徴づける前提テンプレート束として導入すること（対象クラス側の圧縮）
+\item 語彙・ルール・トレイトをドメイン相対的に管理し、言語ゲームや立場差を明示すること
+\item 複数ステップの逐次実行を、通常の逐次実行へ展開可能なマクロ的派生表現として圧縮導入すること（手続き系列側の圧縮）
+\end{enumerate}
+\end{remark}
+
+\ifPDFTeX
+  \end{CJK}
+\fi
+\end{document}

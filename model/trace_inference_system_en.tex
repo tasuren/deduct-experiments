@@ -1,0 +1,409 @@
+\documentclass[11pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{bm}
+\usepackage{enumitem}
+\usepackage{hyperref}
+
+\newtheorem{definition}{Definition}[section]
+\newtheorem{proposition}[definition]{Proposition}
+\newtheorem{remark}[definition]{Remark}
+\newtheorem{example}[definition]{Example}
+
+\newcommand{\Ent}{\mathrm{Ent}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\Sym}{\mathrm{Sym}}
+\newcommand{\Term}{\mathrm{Term}}
+\newcommand{\Atom}{\mathrm{Atom}}
+\newcommand{\GAtom}{\mathrm{GAtom}}
+\newcommand{\State}{\mathrm{State}}
+\newcommand{\arity}{\mathrm{arity}}
+\newcommand{\headsym}{\mathrm{head}}
+\newcommand{\Prem}{\mathrm{Prem}}
+\newcommand{\Conc}{\mathrm{Conc}}
+\newcommand{\dom}{\mathrm{dom}}
+\newcommand{\vars}{\mathrm{vars}}
+\newcommand{\matchrel}{\mathrel{\mathrm{match}}}
+\newcommand{\MS}{\mathbin{\uplus}}
+\newcommand{\powfin}{\mathcal{M}_{\mathrm{fin}}}
+\newcommand{\Produced}{\mathrm{Produced}}
+\newcommand{\Consumed}{\mathrm{Consumed}}
+
+\title{A Formal Model of a Premise-Consuming Deductive System}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We present a formal model of a sequential deductive system in which atomic facts are treated as consumable resources. States are modeled as finite multisets of ground atoms. Each execution step is triggered by a ground instance of a rule head, induces a substitution, checks the availability of matching premises in the current state, consumes those premises, and produces instantiated conclusions. This yields a small-step transition semantics for premise-consuming forward reasoning.
+\end{abstract}
+
+\section{Overview}
+
+The target formalism is not a static theory of truth accumulation, but an operational semantics of state evolution. The central question is not only whether an atomic formula is true, but which facts are present in the current state, which premises are required for a step, and how execution transforms the state.
+
+Accordingly, we formalize the system as a \emph{state-transition system whose resources are ground atomic formulas}.
+
+\section{Basic Sets}
+
+\begin{definition}[Basic sets]
+Fix the following sets:
+\begin{enumerate}[label=\arabic*.]
+\item $\Ent$, the set of concrete entities;
+\item $\Var$, the set of variables;
+\item $\Sym$, the set of predicate symbols.
+\end{enumerate}
+For each predicate symbol $p \in \Sym$, let
+\[
+\arity(p) \in \mathbb{N}
+\]
+denote its arity.
+\end{definition}
+
+\begin{definition}[Terms]
+Define the set of terms by
+\[
+\Term \coloneqq \Ent \cup \Var.
+\]
+\end{definition}
+
+\begin{definition}[Atomic formulas]
+Let $p \in \Sym$ with $\arity(p)=n$. An \emph{atomic formula} is an expression of the form
+\[
+p(t_1,\dots,t_n),
+\qquad t_1,\dots,t_n \in \Term.
+\]
+The set of all atomic formulas is denoted by $\Atom$.
+\end{definition}
+
+\begin{definition}[Ground atoms]
+An atomic formula $a \in \Atom$ is called a \emph{ground atom} if all of its arguments lie in $\Ent$.
+The set of all ground atoms is denoted by $\GAtom$.
+\end{definition}
+
+\section{Rules}
+
+\begin{definition}[Rule]
+A rule $r$ consists of the data
+\[
+r = (\headsym(r), \Prem(r), \Conc(r)),
+\]
+where
+\begin{enumerate}[label=\arabic*.]
+\item $\headsym(r) \in \Atom$ is the head atom,
+\item $\Prem(r) = (p_1,\dots,p_m)$ is a finite sequence of premise templates, with each $p_i \in \Atom$ ($i=1,\dots,m$),
+\item $\Conc(r) = (c_1,\dots,c_k)$ is a finite sequence of conclusion templates, with each $c_j \in \Atom$ ($j=1,\dots,k$),
+\item every variable occurring in a conclusion template already occurs in the head atom, i.e.
+\[
+\vars(c_j) \subseteq \vars(\headsym(r)) \qquad (j=1,\dots,k).
+\]
+\end{enumerate}
+\end{definition}
+
+\begin{remark}
+Informally, when a concrete instance of the head is executed, the corresponding instances of the premise templates must be available in the current state; if they are available, they are consumed and the corresponding instances of the conclusion templates are produced.
+\end{remark}
+
+\section{Substitutions}
+
+\begin{definition}[Substitution]
+A substitution is a finite partial map
+\[
+\sigma : \Var \rightharpoonup \Term.
+\]
+\end{definition}
+
+\begin{definition}[Action of substitutions]
+For a substitution $\sigma: \Var \rightharpoonup \Term$, define its extension to terms as follows:
+\begin{align*}
+\sigma(e) &= e && (e \in \Ent), \\
+\sigma(x) &=
+\begin{cases}
+u & \text{if } (x,u) \in \sigma,\\
+x & \text{otherwise},
+\end{cases}
+&& (x \in \Var), \\
+\sigma\bigl(p(t_1,\dots,t_n)\bigr) &= p\bigl(\sigma(t_1),\dots,\sigma(t_n)\bigr).
+\end{align*}
+The last clause is the induced action on atomic formulas.
+\end{definition}
+
+\section{Executable Atoms and Induced Substitutions}
+
+\begin{definition}[Executable atom]
+Let $r$ be a rule. A ground atom $a \in \GAtom$ is \emph{executable with respect to $r$} if there exists a substitution $\sigma$ such that
+\[
+a = \sigma(\headsym(r))
+\quad\text{and}\quad
+\dom(\sigma)=\vars(\headsym(r)).
+\]
+\end{definition}
+
+\begin{definition}[Induced substitution]
+In the above situation, the unique substitution $\sigma$ satisfying
+\[
+a = \sigma(\headsym(r))
+\quad\text{and}\quad
+\dom(\sigma)=\vars(\headsym(r))
+\]
+is called a substitution induced by $a$ from the head of $r$.
+\end{definition}
+
+\section{Matching}
+
+\begin{definition}[Matching]
+For an atom $p \in \Atom$ and a ground atom $s \in \GAtom$, we write
+\[
+p \matchrel s
+\]
+if there exists a substitution $\theta$ such that
+\[
+\theta(p)=s.
+\]
+\end{definition}
+
+\begin{remark}
+This is a template-to-instance matching relation. It is weaker and more directional than full unification.
+In particular, $p \matchrel s$ is an existential statement about a substitution and does not require symmetric identification of the two expressions.
+\end{remark}
+
+\section{States}
+
+\begin{definition}[State]
+A state is a finite multiset of ground atoms.
+The class of all states is denoted by
+\[
+\State \coloneqq \powfin(\GAtom).
+\]
+\end{definition}
+
+\begin{remark}
+The multiset structure is essential: the same fact may occur multiple times, and consuming a premise removes only one occurrence.
+\end{remark}
+
+\section{One-Step Transition}
+
+\begin{definition}[Premise satisfiability]
+Let $S \in \State$, let $r$ be a rule, and let $\sigma$ be the induced substitution for an executable atom $a$ of $r$.
+Write $\Prem(r)=(p_1,\dots,p_m)$.
+We say that the premise sequence is \emph{satisfiable in $S$} if there exist a substitution $\tau \supseteq \sigma$ and ground atoms
+\[
+s_1,\dots,s_m \in \GAtom
+\]
+so that, for each ground atom $u$, the number of indices $i$ with $s_i=u$ does not exceed the multiplicity of $u$ in $S$, and, simultaneously, for each premise $p_i$,
+\[
+\tau(p_i)=s_i \qquad (i=1,\dots,m).
+\]
+\end{definition}
+
+\begin{remark}
+Here $\sigma$ is the substitution induced from the executable head atom, while $\tau$ is a common extension of $\sigma$ used to satisfy all premises simultaneously.
+For each $i$, the condition $\tau(p_i)=s_i$ implies $p_i \matchrel s_i$; however, satisfiability requires that all these matches are realized by the \emph{same} extension $\tau$, thereby preserving shared-variable constraints across premises.
+Since every variable occurring in a conclusion template already occurs in the head atom, the produced multiset depends only on $\sigma$.
+\end{remark}
+
+\begin{definition}[Produced multiset]
+Let $r$ be a rule and $\sigma$ an induced substitution for an executable atom $a$.
+Define the produced multiset by
+\[
+\Produced(r,\sigma,a) \coloneqq
+\begin{cases}
+[\sigma(c_1),\dots,\sigma(c_k)] & \text{if } \Conc(r)=(c_1,\dots,c_k),\ k>0,\\
+[a] & \text{if } \Conc(r)=().
+\end{cases}
+\]
+\end{definition}
+
+\begin{definition}[One-step transition]
+For states $S,S' \in \State$, a rule $r$, and an executable atom $a \in \GAtom$, write
+\[
+S \xrightarrow[a]{r} S'
+\]
+if there exist an induced substitution $\sigma$, a substitution $\tau \supseteq \sigma$, and a multiset
+\[
+\Consumed = [s_1,\dots,s_m]
+\]
+of premise witnesses such that, writing $\Prem(r)=(p_1,\dots,p_m)$, for each ground atom $u$ the number of indices $i$ with $s_i=u$ does not exceed the multiplicity of $u$ in $S$, and
+\[
+\tau(p_i)=s_i \qquad (i=1,\dots,m),
+\]
+\[
+S' = (S \setminus \Consumed)\MS \Produced(r,\sigma,a).
+\]
+\end{definition}
+
+\begin{remark}
+Here $S \setminus \Consumed$ denotes multiset subtraction, removing exactly one occurrence of each selected witness.
+Moreover, the conditions $\tau(p_i)=s_i$ in the transition clause are the per-premise matching conditions, and requiring one common $\tau \supseteq \sigma$ simultaneously guarantees consistency with the bindings fixed by the executable atom and consistency among premises.
+\end{remark}
+
+\section{Execution Semantics}
+
+\begin{definition}[Execution sequence]
+An execution sequence is a finite sequence of ground atoms
+\[
+A=(a_1,\dots,a_n).
+\]
+\end{definition}
+
+\begin{definition}[Sequential execution]
+Let $S_0 \in \State$ and let $A=(a_1,\dots,a_n)$ be an execution sequence.
+A sequential execution of $A$ from $S_0$ is a sequence of states
+\[
+S_0,S_1,\dots,S_n
+\]
+such that for each $i=1,\dots,n$, there exists a rule $r_i$ with
+\[
+S_{i-1} \xrightarrow[a_i]{r_i} S_i.
+\]
+\end{definition}
+
+\begin{proposition}[Outcome and failure]
+If a sequential execution exists, then $S_n$ is called the final state of the execution.
+If at some stage $i$ no transition of the form
+\[
+S_{i-1} \xrightarrow[a_i]{r} S_i
+\]
+exists for any rule $r$, then the execution fails at step $i$.
+\end{proposition}
+
+\section{Examples}
+
+\begin{example}[Mortality]
+Consider predicate symbols $\mathrm{Human}$ and $\mathrm{Mortal}$.
+Define a rule $r_{\mathrm{mortal}}$ by
+\begin{align*}
+\headsym(r_{\mathrm{mortal}}) &= \mathrm{Mortal}(x), \\
+\Prem(r_{\mathrm{mortal}}) &= \bigl(\mathrm{Human}(x)\bigr), \\
+\Conc(r_{\mathrm{mortal}}) &= ().
+\end{align*}
+
+If
+\[
+a=\mathrm{Mortal}(\mathrm{Socrates}),
+\]
+then the induced substitution is $\sigma(x)=\mathrm{Socrates}$.
+Hence, if the current state contains $\mathrm{Human}(\mathrm{Socrates})$, that fact is consumed and $\mathrm{Mortal}(\mathrm{Socrates})$ remains in the next state.
+\end{example}
+
+\begin{example}[Unlocking with a key]
+Consider predicate symbols $\mathrm{Unlock}$, $\mathrm{KeyFor}$, $\mathrm{Has}$, and $\mathrm{Opened}$.
+Define a rule $r_{\mathrm{unlock}}$ by
+\begin{align*}
+\headsym(r_{\mathrm{unlock}}) &= \mathrm{Unlock}(x), \\
+\Prem(r_{\mathrm{unlock}}) &= \bigl(\mathrm{KeyFor}(y,x),\mathrm{Has}(y)\bigr), \\
+\Conc(r_{\mathrm{unlock}}) &= \bigl(\mathrm{Opened}(x)\bigr).
+\end{align*}
+
+If
+\[
+a=\mathrm{Unlock}(\mathrm{Door1}),
+\]
+then the induced substitution is $\sigma(x)=\mathrm{Door1}$.
+If the current state contains both
+\[
+\mathrm{KeyFor}(\mathrm{GoldKey},\mathrm{Door1})
+\quad\text{and}\quad
+\mathrm{Has}(\mathrm{GoldKey}),
+\]
+then the common extension $\tau$ may additionally assign
+$y \mapsto \mathrm{GoldKey}$.
+Hence the premises are satisfiable, and $\mathrm{Opened}(\mathrm{Door1})$ is produced in the next state.
+\end{example}
+
+\begin{example}[Transfer of possession]
+Consider predicate symbols $\mathrm{Have}$ and $\mathrm{Give}$.
+Define a rule $r_{\mathrm{give}}$ by
+\begin{align*}
+\headsym(r_{\mathrm{give}}) &= \mathrm{Give}(x,y,o), \\
+\Prem(r_{\mathrm{give}}) &= \bigl(\mathrm{Have}(x,o)\bigr), \\
+\Conc(r_{\mathrm{give}}) &= \bigl(\mathrm{Have}(y,o)\bigr).
+\end{align*}
+
+Executing
+\[
+\mathrm{Give}(\mathrm{Takagi},\mathrm{Marisa},\mathrm{Cat})
+\]
+requires the presence of $\mathrm{Have}(\mathrm{Takagi},\mathrm{Cat})$ in the current state; when present, that fact is consumed and $\mathrm{Have}(\mathrm{Marisa},\mathrm{Cat})$ is produced.
+\end{example}
+
+\begin{example}[Sequential execution]
+Consider again the rule $r_{\mathrm{give}}$ above.
+Let the initial state be
+\[
+S_0=
+\bigl[
+\mathrm{Have}(\mathrm{Takagi},\mathrm{Cat})
+\bigr],
+\]
+and let the execution sequence be
+\[
+A=
+\bigl(
+\mathrm{Give}(\mathrm{Takagi},\mathrm{Marisa},\mathrm{Cat}),
+\mathrm{Give}(\mathrm{Marisa},\mathrm{Alice},\mathrm{Cat})
+\bigr).
+\]
+
+Then
+\[
+S_0 \xrightarrow[\mathrm{Give}(\mathrm{Takagi},\mathrm{Marisa},\mathrm{Cat})]{r_{\mathrm{give}}} S_1
+\]
+holds, where
+\[
+S_1=
+\bigl[
+\mathrm{Have}(\mathrm{Marisa},\mathrm{Cat})
+\bigr].
+\]
+Next,
+\[
+S_1 \xrightarrow[\mathrm{Give}(\mathrm{Marisa},\mathrm{Alice},\mathrm{Cat})]{r_{\mathrm{give}}} S_2
+\]
+holds, where
+\[
+S_2=
+\bigl[
+\mathrm{Have}(\mathrm{Alice},\mathrm{Cat})
+\bigr].
+\]
+Hence $(S_0,S_1,S_2)$ is a sequential execution of $A$ from $S_0$.
+\end{example}
+
+\section{Character of the Model}
+
+\begin{remark}
+The resulting formalism has the following character.
+\begin{enumerate}[label=\arabic*.]
+\item It is a stateful forward-reasoning system.
+\item It is a rule-execution system with premise consumption.
+\item It treats ground atoms as resources.
+\end{enumerate}
+Accordingly, it is closer in spirit to linear-logic intuition, production systems, and small-step operational semantics than to classical monotonic logic.
+This is not intended as a full semantics of natural language. Rather, the model targets an idealized reasoning/execution path obtained after resolving relevant ambiguities in a document or explanation, so that missing premises and inferential jumps can be checked explicitly.
+\end{remark}
+
+\section{Directions for Extension}
+
+\begin{remark}
+Natural extensions include:
+\begin{enumerate}[label=\arabic*.]
+\item replacing simple terms by structured terms,
+\item replacing matching by general unification,
+\item introducing negation or inconsistency states,
+\item adding provenance tracking,
+\item generalizing sequential execution to branching transition systems.
+\end{enumerate}
+For document-centered use, the following lightweight directions are also relevant:
+\begin{enumerate}[label=\arabic*.]
+\setcounter{enumi}{5}
+\item introducing \emph{traits} as reusable bundles of premise templates that recurrently characterize an object class in a domain (compression on the object-class side),
+\item managing vocabulary, rules, and traits in a domain-relative way to make differences between language games or perspectives explicit,
+\item introducing execution-trace compression only as macro-like derived notation for multi-step procedures, required to be expandable back to ordinary sequential execution (compression on the procedural-sequence side).
+\end{enumerate}
+\end{remark}
+
+\end{document}
